@@ -84,7 +84,17 @@ def extract_video(video_file, target_fps=None):
     return frames
 
 if __name__ == "__main__":
-    video_file = "edgeai-test-data/videos/video1_1280_768_h264.mp4"  # Replace with the actual path to your video file
+    video_files = [
+        "edgeai-test-data/videos/video1_1280_768_h264.mp4",
+        "VideoSet/video/1.mp4",
+        "VideoSet/video/2.mp4",
+        "VideoSet/video/3.mp4",
+        "VideoSet/video/4.mp4",
+        "VideoSet/video/5.mp4"
+    ]
+
+    video_file = video_files[5]
+    
     print(video_file)
 
     extracted_frames = extract_video(video_file, target_fps=25)
