@@ -1,3 +1,4 @@
+
 # import face_recognition
 import cv2
 import sys, os
@@ -64,6 +65,36 @@ def extract_video(video_file, target_fps=None):
     print(f"Extracted frames: {len(frames)}")
     return frames
 
+def show_metrics(image, values):
+    # metrics = ["Att 1", "Att 2", "Att 3", "Att 4", "Att 5"]
+
+    panel_height = 80
+    panel_color = (0, 0, 0)
+    img_with_panel = cv2.copyMakeBorder(
+        image,
+        top=0,
+        bottom=panel_height,
+        left=0,
+        right=0,
+        borderType=cv2.BORDER_CONSTANT,
+        value=panel_color
+    )
+
+    font_face = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 1.2
+    color = (255, 255, 255)
+    thickness = 2
+    y = img_with_panel.shape[0] - int(panel_height * 0.4)
+    x = 30
+    spacing = 250  # horizontal space between metrics
+
+    for i, (attr, val) in enumerate(values.items()):
+        text = f"{attr}: {val:.2f}"
+        cv2.putText(img_with_panel, text, (x + i * spacing, y), font_face, scale, color, thickness, cv2.LINE_AA)
+
+    return img_with_panel
+
+
 def show_emotion(image):
     # Random placeholder
     emotions = ["Happy", "Sad", "Neutral", "Disgust", "Anger"]
@@ -73,11 +104,12 @@ def show_emotion(image):
 
     # Area for emotion text
     border_height = 100
+    bottom_panel_height = 200
     border_color = (0, 0, 0)
     img_with_border = cv2.copyMakeBorder(
         image,
         top=border_height,
-        bottom=0,
+        bottom=bottom_panel_height,
         left=0,
         right=0,
         borderType=cv2.BORDER_CONSTANT,
@@ -97,6 +129,8 @@ def show_emotion(image):
 
 
 
+
+
 if __name__ == "__main__":
     video_files = [
         "edgeai-test-data/videos/video1_1280_768_h264.mp4",
@@ -107,7 +141,7 @@ if __name__ == "__main__":
         "VideoSet/video/5.mp4"
     ]
 
-    video_file = video_files[5]
+    video_file = video_files[3]
     
     print(video_file)
 
@@ -136,11 +170,15 @@ if __name__ == "__main__":
     for frame in extracted_frames:
         frame_with_boxes = bound_face_on_image(frame, cascade)
         frame_with_emotion = show_emotion(frame_with_boxes)
-        cv2.imshow(window_name, frame_with_emotion)
+        # Example metrics; replace with real values as needed
+        metrics = {"Confidence": random.uniform(0.5, 1.0)}
+        frame_with_metrics = show_metrics(frame_with_emotion, metrics)
+        cv2.imshow(window_name, frame_with_metrics)
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q'):
             break
         elif key != 255:
+            cv2.waitKey(0)
             cv2.waitKey(0)
     cv2.destroyAllWindows()
 
