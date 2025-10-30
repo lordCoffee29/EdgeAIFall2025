@@ -1,47 +1,28 @@
 # import face_recognition
 import cv2
 import sys, os
+import random
 
-def bound_face(image_file):
-    img = cv2.imread(image_file)
 
+def bound_face_on_image(img, cascade=None):
+    """
+    Draws bounding boxes around faces in the given image.
+    Returns the image with boxes drawn.
+    """
     if img is None:
-        raise FileNotFoundError("Could not read file")
-    
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-
+        raise ValueError("Input image is None")
+    if cascade is None:
+        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces
     faces = cascade.detectMultiScale(
         gray, 
         scaleFactor=1.2, 
-        minNeighbors=6,     # require more neighbor votes
-        minSize=(60, 60)    # ignore tiny regions
+        minNeighbors=6,
+        minSize=(60, 60)
     )
-
-    # Draw red rectangles (BGR: red = (0,0,255))
     for (x, y, w, h) in faces:
-        cv2.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
-
-
-
-    # # Load the image
-    # image_path = image_file # Path to image
-    # image = cv2.imread(image_path)
-
-    # # Find all the faces in the image
-    # face_locations = face_recognition.face_locations(image)
-
-    # # Loop through each face found in the image
-    # for (top, right, bottom, left) in face_locations:
-    #     # Draw a red box around the face
-    #     cv2.rectangle(image, (left, top), (right, bottom), (0, 0, 255), 2)  # BGR color for red
-
-    # # Display the image with highlighted faces
-    # cv2.imshow("Faces Highlighted", image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+    return img
 
 
 def extract_video(video_file, target_fps=None):
@@ -83,6 +64,39 @@ def extract_video(video_file, target_fps=None):
     print(f"Extracted frames: {len(frames)}")
     return frames
 
+def show_emotion(image):
+    # Random placeholder
+    emotions = ["Happy", "Sad", "Neutral", "Disgust", "Anger"]
+    emotion = random.choice(emotions)
+    
+    # TO-DO: get the emotion from the model
+
+    # Area for emotion text
+    border_height = 100
+    border_color = (0, 0, 0)
+    img_with_border = cv2.copyMakeBorder(
+        image,
+        top=border_height,
+        bottom=0,
+        left=0,
+        right=0,
+        borderType=cv2.BORDER_CONSTANT,
+        value=border_color
+    )
+
+    # Place the emotion text on the border
+    font_face = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 2      
+    color = (255, 255, 255) 
+    thickness = 4  
+    pos = (50, int(border_height * 0.7))  
+
+    # Draw white text
+    cv2.putText(img_with_border, emotion, pos, font_face, scale, color, thickness, cv2.LINE_AA)
+    return img_with_border
+
+
+
 if __name__ == "__main__":
     video_files = [
         "edgeai-test-data/videos/video1_1280_768_h264.mp4",
@@ -114,36 +128,20 @@ if __name__ == "__main__":
     cv2.namedWindow(window_name)
     print("Window playback")
     
+
     cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     print("Cascade")
 
     print("Starting loop")
-    for i in range(len(extracted_frames)):
-        frame = extracted_frames[i]
-        
-        # detect faces in grayscale copy
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
-
-        faces = cascade.detectMultiScale(
-            gray, 
-            scaleFactor=1.20, 
-            minNeighbors=6,     # require more neighbor votes
-            minSize=(60, 60)    # ignore tiny regions
-        )
-        # draw red rectangles on the original frame
-        for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-
-        # show the frame with boxes
-        cv2.imshow(window_name, frame)
-
+    for frame in extracted_frames:
+        frame_with_boxes = bound_face_on_image(frame, cascade)
+        frame_with_emotion = show_emotion(frame_with_boxes)
+        cv2.imshow(window_name, frame_with_emotion)
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q'):
             break
         elif key != 255:
             cv2.waitKey(0)
-    
     cv2.destroyAllWindows()
 
 
