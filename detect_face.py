@@ -6,10 +6,6 @@ import random
 
 
 def bound_face_on_image(img, cascade=None):
-    """
-    Draws bounding boxes around faces in the given image.
-    Returns the image with boxes drawn.
-    """
     if img is None:
         raise ValueError("Input image is None")
     if cascade is None:
