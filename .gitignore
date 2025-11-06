@@ -4,3 +4,4 @@ VideoSet/
 model_zoo/
 test_crops/
 crops/
+.DS_Store
