@@ -118,9 +118,10 @@ def nms_iou(dets, iou_thr=0.45):
 
 def postprocess(outputs, meta, score_thr=0.35, iou_thr=0.45, letterbox_on=True):
     """
-    Supports two common TI/YOLOX output formats:
+    Supports common TI/YOLOX output formats:
       A) [dets=(N,5), labels=(N,)] where dets=[x1,y1,x2,y2,score] in letterbox space
       B) [raw=(1,M,6)] where each row is [x1,y1,x2,y2,score,cls]
+      C) [(N,4), (N,)] where first tensor is boxes and second is scores
     """
     (r, dx, dy, (ow, oh)) = meta
     boxes = []
@@ -160,6 +161,41 @@ def postprocess(outputs, meta, score_thr=0.35, iou_thr=0.45, letterbox_on=True):
             if x2 <= x1 or y2 <= y1: continue
             boxes.append([x1,y1,x2,y2,score])
 
+    elif len(outputs) == 2 and outputs[0].shape[1] == 4:
+        # Format C: separate boxes and a second tensor which may be scores OR class ids
+        boxes_raw = outputs[0]  # (N,4)
+        second = outputs[1]
+        # If second tensor is floating, treat as scores
+        if np.issubdtype(np.asarray(second).dtype, np.floating):
+            scores = second
+            for box, score in zip(boxes_raw, scores):
+                score = float(score)
+                if score < score_thr: continue
+                x1,y1,x2,y2 = map(float, box)
+                if letterbox_on:
+                    x1 = (x1 - dx) / (r + 1e-12)
+                    y1 = (y1 - dy) / (r + 1e-12)
+                    x2 = (x2 - dx) / (r + 1e-12)
+                    y2 = (y2 - dy) / (r + 1e-12)
+                x1 = max(0, min(ow-1, x1)); y1 = max(0, min(oh-1, y1))
+                x2 = max(0, min(ow-1, x2)); y2 = max(0, min(oh-1, y2))
+                if x2 <= x1 or y2 <= y1: continue
+                boxes.append([x1,y1,x2,y2,score])
+        else:
+            for box in boxes_raw:
+                x1,y1,x2,y2 = map(float, box)
+                if letterbox_on:
+                    x1 = (x1 - dx) / (r + 1e-12)
+                    y1 = (y1 - dy) / (r + 1e-12)
+                    x2 = (x2 - dx) / (r + 1e-12)
+                    y2 = (y2 - dy) / (r + 1e-12)
+                x1 = max(0, min(ow-1, x1)); y1 = max(0, min(oh-1, y1))
+                x2 = max(0, min(ow-1, x2)); y2 = max(0, min(oh-1, y2))
+                if x2 <= x1 or y2 <= y1: continue
+                area = max(0.0, (x2 - x1) * (y2 - y1))
+                proxy_score = float(area / (ow * oh + 1e-12))
+                proxy_score = max(0.0, min(1.0, proxy_score))
+                boxes.append([x1, y1, x2, y2, proxy_score])
     else:
         # Unknown format → print and exit gracefully
         print("Unexpected output shapes:", [o.shape for o in outputs])
@@ -182,7 +218,6 @@ def main():
     artifacts = os.path.join(base, "artifacts")
     onnx_path = os.path.join(artifacts, "model.onnx")
     if not os.path.exists(onnx_path):
-        # many packs keep a copy under model/
         alt = os.path.join(base, "model", "model.onnx")
         if os.path.exists(alt):
             onnx_path = alt

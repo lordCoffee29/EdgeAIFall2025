@@ -2,3 +2,5 @@ edgeai-gst-apps/
 edgeai-test-data/
 VideoSet/
 model_zoo/
+test_crops/
+crops/
