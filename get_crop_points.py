@@ -146,6 +146,7 @@ class YOLOXFaceDetector:
         # YOLOX takes in uint8 inputs
         inp_uint8 = (inp * 255).astype(np.uint8)
         outs = self.sess.run(None, {self.in_name: inp_uint8})
+        # Call the helper function to postprocess
         boxes = detect_face.postprocess(outs, meta, score_thr=self.score_thr, iou_thr=self.iou, letterbox_on=self.letterbox_on)
 
         # postprocess returns list of (x1,y1,x2,y2,score) ints.

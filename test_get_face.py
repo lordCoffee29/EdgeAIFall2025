@@ -28,7 +28,7 @@ def main():
     cv2.resizeWindow('Crops', 800, 600)
     
     # Initialize video capture
-    video_path = "VideoSet/video/3.mp4" # TO-DO: make this a CLI input
+    video_path = "VideoSet/video/1.mp4" # TO-DO: make this a CLI input
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file: {video_path}")
@@ -38,7 +38,7 @@ def main():
 
     # Initialize face detector (adjust base path to your YOLOX model folder)
     det = YOLOXFaceDetector(
-        base="model_zoo/AnikaTestDemo_YOLOXnano",
+        base="model_zoo/ONR-OD-8420-yolox-s-lite-mmdet-widerface-640x640",
         score_thr=0.25  # Lowered threshold to surface weaker detections for debugging
     )
 
