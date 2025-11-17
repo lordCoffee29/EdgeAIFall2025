@@ -39,7 +39,7 @@ def main():
     # Initialize face detector (adjust base path to your YOLOX model folder)
     det = YOLOXFaceDetector(
         base="model_zoo/ONR-OD-8420-yolox-s-lite-mmdet-widerface-640x640",
-        score_thr=0.25  # Lowered threshold to surface weaker detections for debugging
+        score_thr=0.25
     )
 
     frame_count = 0
