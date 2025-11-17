@@ -22,6 +22,7 @@ def load_video_to_clip(path: str, fps: float = None) -> VideoClip:
     return VideoClip(frames=frames, fps=final_fps)
 
 
+# Test: print outputs for each function
 # Load the clip
 clip = load_video_to_clip("VideoSet/video/1.mp4")
 print("Loaded video:")
