@@ -5,3 +5,6 @@ model_zoo/
 test_crops/
 crops/
 .DS_Store
+__pycache__/
+*.pyc
+__pycache__/get_crop_points.cpython-313.pyc
