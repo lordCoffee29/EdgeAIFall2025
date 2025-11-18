@@ -37,12 +37,10 @@ def main():
     writer = None
 
     # Initialize face detector (adjust base path to your YOLOX model folder)
-    det = YOLOXFaceDetector(
-        base="model_zoo/ONR-OD-8420-yolox-s-lite-mmdet-widerface-640x640",
-        score_thr=0.25
-    )
+    det = YOLOXFaceDetector()
 
     frame_count = 0
+
 
     # Save all cropped face images
     crops_accum = []

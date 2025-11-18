@@ -44,12 +44,14 @@ class YOLOXFaceDetector:
     """
 
     def __init__(self,
-                 base: str,
                  providers: Optional[List] = None,
                  input_size: int = 0,
-                 score_thr: Optional[float] = None,
                  iou_thr: float = 0.45,
                  pad_center: bool = False):
+        
+        base = "model_zoo/ONR-OD-8420-yolox-s-lite-mmdet-widerface-640x640"
+        score_thr=0.25
+
         self.base = os.path.abspath(base)
         self.providers = providers or ["CPUExecutionProvider"]
         self.input_size_override = int(input_size)
