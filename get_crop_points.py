@@ -122,59 +122,86 @@ class YOLOXFaceDetector:
         except Exception:
             pass
 
-    def detect(self, frame: "np.ndarray", return_crops: bool = False, return_all: bool = False):
-        """Run detection on a BGR image and return list of boxes.
+    def detect(self, frame: "np.ndarray", return_crops: bool = False):
+        """Run detection on a BGR image and return at most one box (the best face).
 
         Args:
             frame: BGR image (numpy array)
-            return_crops: if True, also return cropped face images as a list.
-            return_all: if True, return all postprocessed boxes (not only the top one).
+            return_crops: if True, also return a single cropped face image.
 
         Returns:
-            If return_crops is False: list of detection dicts each with keys 'x1','y1','x2','y2'.
-            If return_crops is True: tuple (detections, crops) where crops is a list of
-            cropped BGR face images (or None for failed crops).
+            If return_crops is False:
+                detections: list of 0 or 1 dict(s) with keys 'x1','y1','x2','y2','score'.
+            If return_crops is True:
+                (detections, crops) where:
+                    detections: list (len 0 or 1) of detection dicts
+                    crops: list (len 0 or 1) of cropped BGR face images (or [None]).
         """
         if detect_face is None:
-            raise RuntimeError("detect_face helpers not available in the repo; cannot preprocess/postprocess reliably")
+            raise RuntimeError(
+                "detect_face helpers not available in the repo; "
+                "cannot preprocess/postprocess reliably"
+            )
 
-        # Get normalized float32 input and metadata
-        inp, meta = detect_face.preprocess_bgr(frame, self.size,
-                                               reverse_channels=self.reverse,
-                                               letterbox_on=self.letterbox_on,
-                                               pad_mode=self.pad_mode,
-                                               pad_color=self.pad_color)
-        
-        # YOLOX takes in uint8 inputs
+        # Preprocess to model input
+        inp, meta = detect_face.preprocess_bgr(
+            frame,
+            self.size,
+            reverse_channels=self.reverse,
+            letterbox_on=self.letterbox_on,
+            pad_mode=self.pad_mode,
+            pad_color=self.pad_color,
+        )
+
+        # YOLOX expects uint8
         inp_uint8 = (inp * 255).astype(np.uint8)
         outs = self.sess.run(None, {self.in_name: inp_uint8})
-        # Call the helper function to postprocess
-        boxes = detect_face.postprocess(outs, meta, score_thr=self.score_thr, iou_thr=self.iou, letterbox_on=self.letterbox_on)
 
-        # postprocess returns list of (x1,y1,x2,y2,score) ints.
-        results = []
-        crops = []
+        # Postprocess → list of (x1,y1,x2,y2,score)
+        boxes = detect_face.postprocess(
+            outs,
+            meta,
+            score_thr=self.score_thr,
+            iou_thr=self.iou,
+            letterbox_on=self.letterbox_on,
+        )
 
-        # choose which boxes to keep: either all or the single top-scoring one
-        # TO-DO: only pass in the highest scoring box into the crop list
-        chosen_boxes = boxes if return_all else ([max(boxes, key=lambda b: b[4])] if boxes else [])
-
-        for (x1,y1,x2,y2,score) in chosen_boxes:
-            det = {"x1": int(x1), "y1": int(y1), "x2": int(x2), "y2": int(y2)}
-            results.append(det)
-            # Emit concise detection line without confidence
-            print(f"Detected face at (x1={det['x1']}, y1={det['y1']}, x2={det['x2']}, y2={det['y2']})")
+        if not boxes:
+            # No detections
             if return_crops:
-                if crop_face is None:
-                    crops.append(None)
-                else:
-                    face_img, coords = crop_face._default_cropper.crop_face(frame, det)
-                    crops.append(face_img)
+                return [], []
+            return []
 
-        if return_crops:
-            return results, crops
-        return results
+        # Pick the single best box (highest score)
+        best_box = max(boxes, key=lambda b: b[4])
+        x1, y1, x2, y2, score = best_box
 
+        det = {
+            "x1": int(x1),
+            "y1": int(y1),
+            "x2": int(x2),
+            "y2": int(y2),
+            "score": float(score),
+        }
+        print(
+            f"Detected face at (x1={det['x1']}, y1={det['y1']}, "
+            f"x2={det['x2']}, y2={det['y2']}) with score={det['score']:.3f}"
+        )
+
+        detections = [det]
+
+        if not return_crops:
+            return detections
+
+        # Optionally crop only this best face
+        if crop_face is None:
+            crops = [None]
+        else:
+            face_img, coords = crop_face._default_cropper.crop_face(frame, det)
+            crops = [face_img]
+
+        return detections, crops
+    
 
 _detector_singleton: Optional[YOLOXFaceDetector] = None
 
@@ -194,3 +221,4 @@ def get_crop_points_from_image(frame: "np.ndarray", base: str, **kwargs) -> List
 
 if __name__ == "__main__":
     print("Module provides YOLOXFaceDetector and get_crop_points_from_image(frame, base, **kwargs)")
+
