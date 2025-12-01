@@ -46,14 +46,13 @@ def main():
         
         frame_num += 1
         
-        # Detect face (returns list of detection dicts)
+        # Detect best face (returns empty list or single-element list)
         detections = detector.detect(frame, return_crops=False)
         
         if not detections:
             print(f"Frame {frame_num:04d}: No face detected")
             continue
         
-        # Use the first (best) detection
         det = detections[0]
         detected_count += 1
         
