@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from PIL import Image
 from typing import Dict, List, Tuple, Optional, Sequence, Union
 
 
@@ -36,18 +37,17 @@ class FaceCropper:
                   frame_bgr: 'np.ndarray',
                   det: Dict,
                   margin: Optional[float] = None,
-                  out_size: Optional[Tuple[int, int]] = None) -> Tuple[Optional['np.ndarray'], Tuple[int, int, int, int]]:
+                  out_size: Optional[Tuple[int, int]] = None) -> Optional[Image.Image]:
         """Crop a face from an image using detection bbox and optional margin/out size.
 
         Args:
-            frame_bgr: source image in BGR.
+            frame_bgr: source image in BGR (as used by OpenCV).
             det: dict-like with keys 'x1','y1','x2','y2' giving pixel coordinates.
             margin: optional override for margin (fractional, e.g., 0.15).
             out_size: optional override for output size (width,height).
 
         Returns:
-            (face_resized, (x1m,y1m,x2m,y2m)) where face_resized is the cropped/resized face
-            or None if the crop had zero area. Coordinates are clamped to image bounds.
+            face_pil: a PIL.Image in RGB mode, or None if the crop had zero area.
         """
         if margin is None:
             margin = self.margin
@@ -66,25 +66,23 @@ class FaceCropper:
 
         face = frame_bgr[y1m:y2m, x1m:x2m]
         if face.size == 0:
-            return None, (x1m, y1m, x2m, y2m)
-        face_resized = cv2.resize(face, out_size, interpolation=cv2.INTER_LINEAR)
-        return face_resized, (x1m, y1m, x2m, y2m)
+            return None
+
+        # Resize using OpenCV (still in BGR), then convert to RGB and to PIL.Image
+        face_resized_bgr = cv2.resize(face, out_size, interpolation=cv2.INTER_LINEAR)
+        face_resized_rgb = cv2.cvtColor(face_resized_bgr, cv2.COLOR_BGR2RGB)
+        face_pil = Image.fromarray(face_resized_rgb)
+        return face_pil
 
 
 # Backwards-compatible function wrappers
 _default_cropper = FaceCropper()
 
 def draw_boxes_no_labels(frame, bboxes, color=(0, 0, 255), thickness=2):
-    """Backward-compatible function wrapper that uses FaceCropper.draw_boxes_no_labels."""
     return _default_cropper.draw_boxes_no_labels(frame, bboxes, color=color, thickness=thickness)
 
 
 def crop_face(frame_bgr, det: Dict, margin: float = 0.15, out_size=(224, 224)):
-    """Backward-compatible function wrapper that uses FaceCropper.crop_face.
-
-    Note: the wrapper passes margin/out_size to the underlying cropper, so it's
-    functionally equivalent to the previous implementation.
-    """
     return _default_cropper.crop_face(frame_bgr, det, margin=margin, out_size=out_size)
 
 

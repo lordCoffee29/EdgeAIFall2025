@@ -16,6 +16,7 @@ Example:
 import os
 from typing import List, Dict, Optional, Tuple
 import numpy as np
+import json
 import onnxruntime as ort
 
 try:
@@ -122,7 +123,7 @@ class YOLOXFaceDetector:
         except Exception:
             pass
 
-    def detect(self, frame: "np.ndarray", return_crops: bool = False):
+    def detect(self, frame: "np.ndarray", return_crops: bool = False, json_output: bool = False, margin: Optional[float] = None):
         """Run detection on a BGR image and return at most one box (the best face).
 
         Args:
@@ -130,12 +131,21 @@ class YOLOXFaceDetector:
             return_crops: if True, also return a single cropped face image.
 
         Returns:
-            If return_crops is False:
+            If `json_output` is False and `return_crops` is False:
                 detections: list of 0 or 1 dict(s) with keys 'x1','y1','x2','y2','score'.
-            If return_crops is True:
+            If `json_output` is False and `return_crops` is True:
                 (detections, crops) where:
                     detections: list (len 0 or 1) of detection dicts
                     crops: list (len 0 or 1) of cropped BGR face images (or [None]).
+            If `json_output` is True:
+                A JSON string describing the four corner points of the crop rectangle
+                and the detection score. The JSON object has keys:
+                    - 'points': list of four {"x":int, "y":int} in order TL,TR,BR,BL
+                    - 'score': float (or null if no detection)
+                When `json_output` is True, the function returns the JSON string
+                instead of Python detection lists/tuples. The `margin` parameter
+                (float) is used to expand the crop region if provided; otherwise
+                the cropper's default margin is used when available.
         """
         if detect_face is None:
             raise RuntimeError(
@@ -168,6 +178,8 @@ class YOLOXFaceDetector:
 
         if not boxes:
             # No detections
+            if json_output:
+                return json.dumps({"points": [], "score": None})
             if return_crops:
                 return [], []
             return []
@@ -190,6 +202,29 @@ class YOLOXFaceDetector:
 
         detections = [det]
 
+        # If JSON output requested: compute the crop rectangle (with margin)
+        # and return four corner points as JSON (TL, TR, BR, BL)
+        if json_output:
+            # Prefer crop_face helper to compute margin/clamping if available
+            if crop_face is not None:
+                # crop_face returns (face_resized, (x1m,y1m,x2m,y2m))
+                _, coords = crop_face._default_cropper.crop_face(frame, det, margin=margin)
+                x1m, y1m, x2m, y2m = coords
+            else:
+                # Fallback: use raw bbox and no margin, clamp to image
+                H, W = frame.shape[:2]
+                x1m = max(0, int(det['x1'])); y1m = max(0, int(det['y1']))
+                x2m = min(W, int(det['x2'])); y2m = min(H, int(det['y2']))
+
+            points = [
+                {"x": int(x1m), "y": int(y1m)},  # TL
+                {"x": int(x2m), "y": int(y1m)},  # TR
+                {"x": int(x2m), "y": int(y2m)},  # BR
+                {"x": int(x1m), "y": int(y2m)},  # BL
+            ]
+            out = {"points": points, "score": float(det["score"]) }
+            return json.dumps(out)
+
         if not return_crops:
             return detections
 
@@ -205,18 +240,21 @@ class YOLOXFaceDetector:
 
 _detector_singleton: Optional[YOLOXFaceDetector] = None
 
-def get_crop_points_from_image(frame: "np.ndarray", base: str, **kwargs) -> List[Dict]:
+def get_crop_points_from_image(frame: "np.ndarray", base: str, return_crops: bool = False, json_output: bool = False, margin: Optional[float] = None, **kwargs) -> List[Dict]:
     """Simple helper: load (or reuse) a detector for `base` and return boxes for `frame`.
 
     Args:
         frame: BGR image (as from cv2.imread or camera)
         base: model package folder (same as detect_face -- contains artifacts/model.onnx)
+        return_crops: forward to detector.detect to also receive cropped face images
+        json_output: if True, return a JSON string describing four crop corner points
+        margin: optional margin override when computing crop rectangle (float)
         kwargs: forwarded to YOLOXFaceDetector constructor (e.g., score_thr, input_size)
     """
     global _detector_singleton
     if _detector_singleton is None or _detector_singleton.base != os.path.abspath(base):
         _detector_singleton = YOLOXFaceDetector(base=base, **kwargs)
-    return _detector_singleton.detect(frame)
+    return _detector_singleton.detect(frame, return_crops=return_crops, json_output=json_output, margin=margin)
 
 
 if __name__ == "__main__":
