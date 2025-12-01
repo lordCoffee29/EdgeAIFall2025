@@ -50,7 +50,7 @@ def main():
         
         frame_num += 1
         
-        # Detect best face (returns empty list or single-element list)
+        # Detect face
         detections = detector.detect(frame, return_crops=False)
         
         if not detections:
