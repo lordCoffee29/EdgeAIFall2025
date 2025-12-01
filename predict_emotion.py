@@ -22,13 +22,11 @@ class EmotionPredictor:
         raise TypeError("image must be a file path or PIL.Image.Image")
 
     def _predict(self, image: Union[str, Image.Image]) -> Tuple[str, float]:
-        # Simple cache for repeated calls with the same image path
         if isinstance(image, str) and image == self._last_image_path and self._last_result is not None:
             return self._last_result
 
         pil_image = self._prepare_image(image)
         inputs = self.processor(pil_image, return_tensors="pt")
-        # move tensors to device
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
@@ -48,7 +46,7 @@ class EmotionPredictor:
         return emotion, confidence
 
     def predict_emotion(self, image: Union[str, Image.Image]) -> str:
-        # Return predicted emotion as a string
+        # Return predicted emotion
         return self._predict(image)[0]
 
     def predict_confidence(self, image: Union[str, Image.Image]) -> float:
@@ -59,9 +57,6 @@ class EmotionPredictor:
 if __name__ == '__main__':
     import sys
 
-    # This script prefers being used as a module by passing a PIL Image to
-    # `EmotionPredictor.predict_emotion` / `predict_confidence` from other code.
-    # If you call it as a script, provide an image path as the first arg.
     if len(sys.argv) <= 1:
         print("Usage: python predict_emotion.py path/to/image.png")
         sys.exit(1)
