@@ -9,12 +9,15 @@ from predict_emotion import EmotionPredictor
 
 
 def main():
+    # CHANGE THIS PATH TO VIDEO FILE
     if len(sys.argv) < 2:
         print("Usage: python test_realtime_emotion.py path/to/video.mp4")
         sys.exit(1)
 
+    # CHANGE THIS PATH TO VIDEO FILE
     video_path = sys.argv[1]
     
+    # IF UI USING SMTH DIFFERENT FROM OPENCV, ADJUST HERE
     print(f"Loading video: {video_path}")
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -26,6 +29,7 @@ def main():
     print(f"Video: {total_frames} frames @ {fps:.2f} FPS")
 
     # Initialize models
+    # OBJECTS HANDLING FACE DETECTION/CROPPING AND EMOTION PREDICTION
     print("Loading YOLOX face detector...")
     detector = YOLOXFaceDetector()
     
